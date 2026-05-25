@@ -1,5 +1,0 @@
-# Dependencies are defined in pyproject.toml; this file is a dev convenience.
-# Editable install with all extras:
-#   pip install -e ".[rest,dev]"
-httpx>=0.27
-mcp[cli]>=1.2

@@ -23,6 +23,7 @@ import base64
 import gzip
 import json
 import ssl
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -97,6 +98,17 @@ class NadlanClient:
         timeout: float = 30.0,
         client: httpx.Client | None = None,
     ) -> None:
+        """Create a client.
+
+        Args:
+            domain: Hostname bound into the signed-request signature; must match an
+                allowed origin (defaults to ``www.nadlan.gov.il``).
+            timeout: Per-request timeout in seconds.
+            client: Optional pre-built ``httpx.Client`` (e.g. for tests/mock
+                transports); a default one is created when omitted. The internal
+                govmap search client is always created separately because it needs
+                a relaxed SSL context.
+        """
         self.domain = domain
         self._client = client or httpx.Client(timeout=timeout, headers=_BROWSER_HEADERS)
         # Dedicated client for govmap search, which needs a relaxed SSL context.
@@ -235,14 +247,17 @@ class NadlanClient:
         decoded = _decode_api_body(resp.content)
         if raise_on_empty and decoded.get("statusCode") == 405:
             raise DealDataUnavailable(
-                "deal-data returned an empty 405 envelope (currently affects all callers)."
+                "deal-data returned an empty 405 envelope; the endpoint is gated by "
+                "reCAPTCHA Enterprise and rejects programmatic callers without a valid token."
             )
         return decoded
 
-    def all_deals(self, base_name: str, base_id: int | str, **kwargs: Any):
-        """Generator over every transaction, walking ``fetch_number`` pages.
+    def all_deals(
+        self, base_name: str, base_id: int | str, **kwargs: Any
+    ) -> Iterator[dict]:
+        """Yield every transaction dict, walking ``fetch_number`` pages.
 
-        Stops when ``fetch_number`` exceeds ``data.total_page``.
+        Stops when the current page reaches ``data.total_page`` (or a page is empty).
         """
         page = 1
         while True:

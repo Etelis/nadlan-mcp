@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
+import json
 
+from nadlan import signing
 from nadlan.signing import (
     HMAC_SECRET,
     DEFAULT_DOMAIN,
@@ -14,6 +17,10 @@ from nadlan.signing import (
 )
 
 
+def _b64url_decode(segment: str) -> bytes:
+    return base64.urlsafe_b64decode(segment + "=" * (-len(segment) % 4))
+
+
 def test_envelope_roundtrips():
     payload = {"base_id": "50001103", "base_name": "streetCode", "fetch_number": 1}
     envelope = sign_payload(payload)
@@ -21,10 +28,8 @@ def test_envelope_roundtrips():
     assert set(envelope) == {"##"}
     recovered = decode_envelope(envelope)
 
-    # business fields survive the round-trip
     for key, value in payload.items():
         assert recovered[key] == value
-    # the signer injects these
     assert recovered["domain"] == DEFAULT_DOMAIN
     assert isinstance(recovered["exp"], int)
     assert "sk" in recovered
@@ -35,13 +40,8 @@ def test_signature_uses_bundle_secret_and_is_reversed():
     jwt = envelope["##"][::-1]  # un-reverse
     header_b64, body_b64, sig_b64 = jwt.split(".")
 
-    expected_sig = hmac.new(
-        HMAC_SECRET, f"{header_b64}.{body_b64}".encode(), hashlib.sha256
-    ).digest()
-    import base64
-
-    got_sig = base64.urlsafe_b64decode(sig_b64 + "=" * (-len(sig_b64) % 4))
-    assert got_sig == expected_sig
+    expected = hmac.new(HMAC_SECRET, f"{header_b64}.{body_b64}".encode(), hashlib.sha256).digest()
+    assert _b64url_decode(sig_b64) == expected
 
 
 def test_recaptcha_token_included_when_provided():
@@ -49,6 +49,21 @@ def test_recaptcha_token_included_when_provided():
     assert recovered["token"] == "server-tok"
 
 
-def test_make_sk_is_a_jwt_with_domain_and_exp():
-    sk = make_sk()
-    assert sk.count(".") == 2  # header.body.sig
+def test_no_sk_and_no_token_when_omitted():
+    recovered = decode_envelope(sign_payload({"a": 1}, include_sk=False))
+    assert "sk" not in recovered
+    assert "token" not in recovered
+
+
+def test_exp_is_now_plus_ttl(monkeypatch):
+    monkeypatch.setattr(signing.time, "time", lambda: 1000.0)
+    recovered = decode_envelope(sign_payload({"a": 1}, ttl=120, include_sk=False))
+    assert recovered["exp"] == 1120
+
+
+def test_make_sk_body_carries_domain_and_future_exp(monkeypatch):
+    monkeypatch.setattr(signing.time, "time", lambda: 1000.0)
+    sk = make_sk(domain="example.test", ttl=60)
+    header, body, sig = sk.split(".")
+    claims = json.loads(_b64url_decode(body))
+    assert claims == {"domain": "example.test", "exp": 1060}

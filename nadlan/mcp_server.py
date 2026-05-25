@@ -139,14 +139,14 @@ def get_settlement_overview(
     plus neighborhood/street counts - not the full lists. Use `list_neighborhoods` /
     `list_streets` for those.
     """
-    s = _nadlan.settlement_summary(settlement_code, rent=rent)
+    summary = _nadlan.settlement_summary(settlement_code, rent=rent)
     return {
-        "settlement_code": s.get("settlementID"),
-        "name": s.get("settlementName"),
-        "neighborhood_count": len(s.get("otherNeighborhoods") or []),
-        "street_count": len(s.get("otherSettlmentStreets") or []),
+        "settlement_code": summary.get("settlementID"),
+        "name": summary.get("settlementName"),
+        "neighborhood_count": len(summary.get("otherNeighborhoods") or []),
+        "street_count": len(summary.get("otherSettlmentStreets") or []),
         "market": "rent" if rent else "buy",
-        "trends": _trends_summary(s.get("trends") or {}),
+        "trends": _trends_summary(summary.get("trends") or {}),
     }
 
 
@@ -162,17 +162,17 @@ def get_neighborhood_overview(
 ) -> dict:
     """Overview of a single neighborhood: name, parent settlement, headline trends.
 
-    `uniq_id` is the legacy neighborhood id - get it from `list_neighborhoods` or from
-    a SETTLEMENT search. Set `rent=True` for rentals.
+    `uniq_id` is the legacy neighborhood id - it is the `id` returned by
+    `list_neighborhoods`. Set `rent=True` for rentals.
     """
-    n = _nadlan.neighborhood_summary(uniq_id, rent=rent)
+    summary = _nadlan.neighborhood_summary(uniq_id, rent=rent)
     return {
-        "neighborhood_id": n.get("neighborhoodId"),
-        "name": n.get("neighborhoodName"),
-        "settlement_code": n.get("settlementID"),
-        "settlement_name": n.get("settlementName"),
+        "neighborhood_id": summary.get("neighborhoodId"),
+        "name": summary.get("neighborhoodName"),
+        "settlement_code": summary.get("settlementID"),
+        "settlement_name": summary.get("settlementName"),
         "market": "rent" if rent else "buy",
-        "trends": _trends_summary(n.get("trends") or {}),
+        "trends": _trends_summary(summary.get("trends") or {}),
     }
 
 
@@ -187,10 +187,10 @@ def list_neighborhoods(
 
     The `id` is the legacy neighborhood id to pass to `get_neighborhood_overview`.
     """
-    s = _nadlan.settlement_summary(settlement_code)
+    summary = _nadlan.settlement_summary(settlement_code)
     return [
-        {"id": n.get("id"), "name": n.get("title")}
-        for n in (s.get("otherNeighborhoods") or [])
+        {"id": hood.get("id"), "name": hood.get("title")}
+        for hood in (summary.get("otherNeighborhoods") or [])
     ]
 
 
@@ -212,10 +212,10 @@ def list_streets(
     A large city has thousands of streets, so pass `name_contains` (Hebrew substring)
     to filter and/or rely on `limit` (default 100). Returns `{total, returned, streets}`.
     """
-    s = _nadlan.settlement_summary(settlement_code)
+    summary = _nadlan.settlement_summary(settlement_code)
     streets = [
         {"id": st.get("id"), "name": st.get("title")}
-        for st in (s.get("otherSettlmentStreets") or [])
+        for st in (summary.get("otherSettlmentStreets") or [])
     ]
     if name_contains:
         streets = [st for st in streets if name_contains in str(st["name"] or "")]

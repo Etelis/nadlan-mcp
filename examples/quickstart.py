@@ -1,4 +1,4 @@
-"""End-to-end demo of the nadlan.gov.il client (run: python example.py)."""
+"""End-to-end demo of the nadlan.gov.il client (run: python examples/quickstart.py)."""
 
 from nadlan import NadlanClient
 
@@ -35,13 +35,14 @@ def main() -> None:
             print(f"  {d['DealNature']}: {d['DealNatureDescription']}")
 
         # 5) Transaction listing via the signed dynamic API.
-        #    Currently returns an empty statusCode:405 envelope upstream-wide.
+        #    /deal-data is gated by reCAPTCHA Enterprise and returns an empty
+        #    statusCode:405 envelope for programmatic callers (see docs).
         print("\n== deal-data (street 50001103) ==")
         result = nadlan.deal_data("streetCode", "50001103")
         data = result.get("data", {})
         print(f"  statusCode={result.get('statusCode')} total_rows={data.get('total_rows')}")
         if not data.get("items"):
-            print("  (no items - upstream /deal-data outage; signing/transport verified)")
+            print("  (no items - /deal-data is reCAPTCHA-gated; signing/transport verified)")
 
 
 if __name__ == "__main__":
