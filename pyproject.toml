@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nadlan-mcp"
+version = "0.1.0"
+description = "MCP server and Python client for Israeli government real-estate data (nadlan.gov.il)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Itay Etelis" }]
+keywords = ["mcp", "nadlan", "real-estate", "israel", "model-context-protocol"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "httpx>=0.27",
+    "mcp[cli]>=1.2",
+]
+
+[project.optional-dependencies]
+rest = ["fastapi>=0.110", "uvicorn>=0.29"]
+dev = ["pytest>=8", "build", "twine"]
+
+[project.scripts]
+nadlan-mcp = "nadlan.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/itayetlis/nadlan-mcp"
+Issues = "https://github.com/itayetlis/nadlan-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["nadlan"]
+exclude = ["**/CLAUDE.md"]
+
+[tool.hatch.build.targets.sdist]
+include = ["nadlan", "examples", "tests", "README.md", "LICENSE"]
