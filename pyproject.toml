@@ -39,4 +39,4 @@ packages = ["nadlan"]
 exclude = ["**/CLAUDE.md"]
 
 [tool.hatch.build.targets.sdist]
-include = ["nadlan", "examples", "tests", "README.md", "LICENSE"]
+include = ["nadlan", "examples", "tests", "docs", "README.md", "LICENSE"]
